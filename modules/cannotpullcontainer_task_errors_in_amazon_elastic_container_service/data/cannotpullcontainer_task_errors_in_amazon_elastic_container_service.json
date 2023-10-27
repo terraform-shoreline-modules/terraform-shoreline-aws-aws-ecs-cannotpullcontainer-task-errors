@@ -1,0 +1,166 @@
+{
+  "name": "cannotpullcontainer_task_errors_in_amazon_elastic_container_service",
+  "description": "This incident type occurs when a user attempts to create a task in Amazon Elastic Container Service but receives an error message indicating that the container image specified cannot be retrieved. There are several potential troubleshooting areas, including connection timeout, context cancellation, image not found, Docker Hub rate limiting, and pull access denial. To resolve these issues, users may need to configure their VPC, verify their repository URI and image name, set up proper access using the task execution IAM role, or authenticate their Docker client with Amazon ECR.",
+  "params": [
+    {
+      "name": "TASK_ID",
+      "value": ""
+    },
+    {
+      "name": "SUBNET_ID",
+      "value": ""
+    },
+    {
+      "name": "VPC_ID",
+      "value": ""
+    },
+    {
+      "name": "ECR_REPOSITORY_URI",
+      "value": ""
+    },
+    {
+      "name": "TASK_EXECUTION_ROLE",
+      "value": ""
+    },
+    {
+      "name": "REPOSITORY_NAME",
+      "value": ""
+    },
+    {
+      "name": "CLUSTER",
+      "value": ""
+    },
+    {
+      "name": "TASK_DEFINITION_ARN",
+      "value": ""
+    },
+    {
+      "name": "HOST_NAME",
+      "value": ""
+    },
+    {
+      "name": "K8S_CLUSTER_NAME",
+      "value": ""
+    },
+    {
+      "name": "NAMESPACE",
+      "value": ""
+    }
+  ],
+  "cells": [
+    {
+      "name": "cell_1",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## CannotPullContainer task errors in Amazon Elastic Container Service\nThis incident type occurs when a user attempts to create a task in Amazon Elastic Container Service but receives an error message indicating that the container image specified cannot be retrieved. There are several potential troubleshooting areas, including connection timeout, context cancellation, image not found, Docker Hub rate limiting, and pull access denial. To resolve these issues, users may need to configure their VPC, verify their repository URI and image name, set up proper access using the task execution IAM role, or authenticate their Docker client with Amazon ECR."
+    },
+    {
+      "name": "cell_2",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check if the task definition specifies an existing container image"
+    },
+    {
+      "name": "cell_3",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `aws ecs describe-task-definition --task-definition ${TASK_DEFINITION_ARN}`"
+    },
+    {
+      "name": "cell_4",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Verify the repository URI and the image name"
+    },
+    {
+      "name": "cell_5",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `aws ecr describe-images --repository-name ${REPOSITORY_NAME}`"
+    },
+    {
+      "name": "cell_6",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Verify that the task execution IAM role has the proper access"
+    },
+    {
+      "name": "cell_7",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `aws iam get-role --role-name ${TASK_EXECUTION_ROLE}`"
+    },
+    {
+      "name": "cell_8",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check the subnet ID of the task"
+    },
+    {
+      "name": "cell_9",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `aws ecs describe-tasks --tasks ${TASK_ID}`"
+    },
+    {
+      "name": "cell_10",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check the VPC configuration"
+    },
+    {
+      "name": "cell_11",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `aws ec2 describe-vpcs --vpc-ids ${VPC_ID}`"
+    },
+    {
+      "name": "cell_12",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check the NAT gateway configuration"
+    },
+    {
+      "name": "cell_13",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `aws ec2 describe-nat-gateways --filter \"Name=vpc-id,Values=${VPC_ID}\"`"
+    },
+    {
+      "name": "cell_14",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## The task is launched in a private subnet without a NAT gateway configured to route requests to the internet."
+    },
+    {
+      "name": "cell_15",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "host | host_name=$HOST_NAME | invoke_subnet_internet_access($TASK_ID, $SUBNET_ID, $VPC_ID, $CLUSTER)"
+    },
+    {
+      "name": "cell_16",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Specify ENABLED for Auto-assign public IP when launching the task for tasks in public subnets, and specify DISABLED for Auto-assign public IP when launching the task for tasks in private subnets, and configure a NAT gateway in your VPC to route requests to the internet."
+    },
+    {
+      "name": "cell_17",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "host | host_name=$HOST_NAME | invoke_ecs_run_task_script($TASK_ID, $SUBNET_ID, $VPC_ID)"
+    },
+    {
+      "name": "cell_18",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## change the latest image for task definition"
+    },
+    {
+      "name": "cell_19",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "host | host_name=$HOST_NAME | invoke_ecs_update_task_definition($ECR_REPOSITORY_URI, $REPOSITORY_NAME, $TASK_DEFINITION_ARN)"
+    }
+  ]
+}
